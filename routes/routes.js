@@ -33,7 +33,11 @@ router.post('/callback', async (req, res) => {
 
 router.get('/callback/batch', async (req, res) => {
     try{
-        const data = await Data.find();
+        let f = 'batchId procId serialNumber qrImage';
+        if(req.query.withQr=='false') {
+            f = 'batchId procId serialNumber';
+        }
+        const data = await Data.find().select(f);
         res.json(data)
     }
     catch(error){
@@ -43,7 +47,11 @@ router.get('/callback/batch', async (req, res) => {
 
 router.get('/callback/batch/:batch', async (req, res) => {
     try{
-        const data = await Data.find({batchId: req.params.batch});
+        let f = 'batchId procId serialNumber qrImage';
+        if(req.query.withQr=='false') {
+            f = 'batchId procId serialNumber';
+        }
+        const data = await Data.find({batchId: req.params.batch}).select(f);
         res.json(data)
     }
     catch(error){
