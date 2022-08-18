@@ -1,0 +1,17 @@
+{
+  "name": "api-callback",
+  "version": "1.0.0",
+  "description": "API endpoint for serial number batch receive",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "author": "Fuji Pebri <pebri86@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "mongoose": "^6.5.2",
+    "nodemon": "^2.0.19"
+  }
+}
