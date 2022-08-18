@@ -61,10 +61,14 @@ router.get('/callback/batch/:batch', async (req, res) => {
 
 router.get('/callback/count', (req, res) => {
     try{
+        var b;
+        Data.find({}).distinct("batchId", function(error, ids) {
+            b = ids
+        });
         var data = Data.find();
         data.count(function (err, count) {
             if (err) res.status(500).json({message: err.message})
-            else res.json({"batchId": req.params.batch, "count": count})
+            else res.json({"total": count, "batchIdList": b})
         });
     }
     catch(error){
