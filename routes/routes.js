@@ -64,7 +64,7 @@ router.get('/callback/count', (req, res) => {
         var data = Data.find();
         data.count(function (err, count) {
             if (err) res.status(500).json({message: err.message})
-            else res.json({"count": count})
+            else res.json({"batchId": req.params.batch, "count": count})
         });
     }
     catch(error){
@@ -78,7 +78,7 @@ router.get('/callback/count/:batch', (req, res) => {
         var query = Data.find({batchId: req.params.batch});
         query.count(function (err, count) {
             if (err) res.status(500).json({message: err.message})
-            else res.json({"count": count})
+            else res.json({"batchId": req.params.batch, "count": count})
         });
     }
     catch(error){
