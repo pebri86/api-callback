@@ -3,7 +3,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const Data = require('../models/serial');
 const jwt = require('jsonwebtoken');
-const { isRegExp } = require('util');
 
 const router = express.Router()
 const clientId = 'ea09066c-3631-4fff-99c6-28c8f0d88607'
@@ -13,22 +12,21 @@ const SIGNATURE_FORMAT = "base64"; // Accepted: hex, latin1, base64
 
 function getPublicKey() {
     const path = require("path");
-    var pubKey = fs.readFileSync(path.resolve(__dirname, "certificate_publickey.pem"), 'utf-8');
+    const pubKey = fs.readFileSync(path.resolve(__dirname, "certificate_publickey.pem"), 'utf-8');
     console.log("\n>>> Public key: \n\n" + pubKey);
     
     return pubKey;
 }
 
 function verifySignature(signature, data) {
-    var publicKey = getPublicKey();
-    var verify = crypto.createVerify(ALGORITHM);
-    var signature = signature;
+    const publicKey = getPublicKey();
+    const verify = crypto.createVerify(ALGORITHM);
+    const signature = signature;
 
     console.log('\n>>> Signature:\n\n' + signature);
 
     verify.update(data);
-
-    var verification = verify.verify(publicKey, signature, SIGNATURE_FORMAT);
+    const verification = verify.verify(publicKey, signature, SIGNATURE_FORMAT);
 
     console.log('\n>>> Verification result: ' + verification.toString().toUpperCase());
 
@@ -36,9 +34,7 @@ function verifySignature(signature, data) {
 }
 
 function verifyHMAC(signature, data) {
-    var hmac = crypto.createHmac('sha512', clientSecret);
-
-    //passing the data to be hashed
+    const hmac = crypto.createHmac('sha512', clientSecret);
     const validate = hmac.update(data).digest('hex');
     
     console.log(">> from header:", signature)
@@ -65,7 +61,6 @@ function authenticate(req, res, next) {
         console.log(err)
 
         if (err) return res.status(403).json({message: "Not Authorized"})
-
         req.clientId = decoded.clientId
 
         next()
@@ -105,7 +100,7 @@ router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
     const token = authHeader && authHeader.split(' ')[1]
     const body = JSON.stringify(req.body)
     const ts = req.headers['x-timestamp']
-    const message = `${meth}:/openapi${url}:${token}:${body}:${ts}`;
+    const message = `${meth}:/api${url}:${token}:${body}:${ts}`;
 
     if (req.clientId == clientId) {
         console.log(req.clientId)
