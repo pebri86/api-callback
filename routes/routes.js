@@ -113,8 +113,10 @@ router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
         if (verifyHMAC(signature, message)) {
             console.log(req.body)
             res.status(200).json({clientId: req.clientId, message: "OK"})
-        } else
+        } else {
+            console.log("invalid signature")
             res.status(403).json({ message: "Invalid Signature"})
+        }
     }
     else
         res.status(403).json({message: "Not Authorized"})
