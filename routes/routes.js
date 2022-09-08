@@ -39,10 +39,11 @@ function verifyHMAC(signature, data) {
     var hmac = crypto.createHmac('sha512', clientSecret);
 
     //passing the data to be hashed
-    const validate = hmac.update(data).digest('hex');
+    const validate = hmac.update(data);
+    const vdata = validate.digest('hex');
     
     console.log(">> from header:", signature)
-    console.log(">> from verify:", validate)
+    console.log(">> from verify:", vdata)
     
     if (signature == validate){
         return true
