@@ -39,11 +39,10 @@ function verifyHMAC(signature, data) {
     var hmac = crypto.createHmac('sha512', clientSecret);
 
     //passing the data to be hashed
-    const validate = hmac.update(data);
-    const vdata = validate.digest('hex');
+    const validate = hmac.update(data).digest('hex');
     
     console.log(">> from header:", signature)
-    console.log(">> from verify:", vdata)
+    console.log(">> from verify:", validate)
     
     if (signature == validate){
         return true
@@ -106,7 +105,7 @@ router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
     const token = authHeader && authHeader.split(' ')[1]
     const body = JSON.stringify(req.body)
     const ts = req.headers['x-timestamp']
-    const message = `${meth}:/openapi${url}:${token}:${JSON.stringify(body)}:${ts}`;
+    const message = `${meth}:/openapi${url}:${token}:${body}:${ts}`;
 
     if (req.clientId == clientId) {
         console.log(req.clientId)
