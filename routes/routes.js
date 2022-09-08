@@ -115,6 +115,7 @@ router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
             res.status(200).json({clientId: req.clientId, message: "OK"})
         } else {
             console.log(req.body)
+            console.log(message)
             console.log("invalid signature")
             res.status(403).json({ message: "Invalid Signature"})
         }
