@@ -42,8 +42,8 @@ function verifyHMAC(signature, data) {
     //Creating the hmac in the required format
     gen_hmac= vdata.digest('hex');
     
-    console.log(signature)
-    console.log(gen_hmac)
+    console.log(">> from header:", signature)
+    console.log(">> from verify:", gen_hmac)
     
     if (signature == gen_hmac){
         return true
