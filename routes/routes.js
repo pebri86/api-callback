@@ -13,8 +13,7 @@ const SIGNATURE_FORMAT = "base64"; // Accepted: hex, latin1, base64
 function getPublicKey() {
     const path = require("path");
     const pubKey = fs.readFileSync(path.resolve(__dirname, "certificate_publickey.pem"), 'utf-8');
-    console.log("\n>>> Public key: \n\n" + pubKey);
-    
+
     return pubKey;
 }
 
@@ -23,12 +22,10 @@ function verifySignature(sign, data) {
     const verify = crypto.createVerify(ALGORITHM);
     const signature = sign;
 
-    //console.log('\n>>> Signature:\n\n' + signature);
-
     verify.update(data);
     const verification = verify.verify(publicKey, signature, SIGNATURE_FORMAT);
 
-    console.log('\n>>> Signature Verification result: ' + verification.toString().toUpperCase());
+    //console.log('\n>>> Signature Verification result: ' + verification.toString().toUpperCase());
 
     return verification;
 }
@@ -36,20 +33,17 @@ function verifySignature(sign, data) {
 function verifyHMAC(signature, data) {
     const hmac = crypto.createHmac('sha512', clientSecret);
     const validate = hmac.update(data).digest('hex');
-    
-    //console.log(">> from header:", signature)
-    //console.log(">> from verify:", validate)
-    
-    if (signature == validate){
-        console.log('\n>>> HMAC Verification result: TRUE');
+
+    if (signature == validate) {
+        //console.log('\n>>> HMAC Verification result: TRUE');
         return true
     }
-    console.log('\n>>> HMAC Verification result: FALSE');
+    //console.log('\n>>> HMAC Verification result: FALSE');
     return false
 }
 
 function generateAccessToken(clientId, expire) {
-    return jwt.sign({ clientId: clientId }, process.env.TOKEN_SECRET, { expiresIn: expire});
+    return jwt.sign({ clientId: clientId }, process.env.TOKEN_SECRET, { expiresIn: expire });
 }
 
 function authenticate(req, res, next) {
@@ -59,26 +53,24 @@ function authenticate(req, res, next) {
     if (token == null) return res.sendStatus(401)
 
     jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
-        console.log(err)
-
-        if (err) return res.status(403).json({message: "Not Authorized"})
+        if (err) return res.status(403).json({ message: "Not Authorized" })
         req.clientId = decoded.clientId
 
         next()
     })
 }
 
-router.post('/auth/token', async(req, res) => {
-    if ( clientId !== req.headers['x-mandiri-key']) {
-        return res.status(403).json({ error: true, message: "Invalid Client ID"})
-    } 
-
-    if ( !req.headers['x-signature']) {
-        return res.status(403).json({ error: true, message: "Invalid Signature"})
+router.post('/auth/token', async (req, res) => {
+    if (clientId !== req.headers['x-mandiri-key']) {
+        return res.status(403).json({ error: true, message: "Invalid Client ID" })
     }
 
-    if ( !req.headers['x-timestamp']) {
-        return res.status(403).json({ error: true, message: "Invalid Timestamp"})
+    if (!req.headers['x-signature']) {
+        return res.status(403).json({ error: true, message: "Invalid Signature" })
+    }
+
+    if (!req.headers['x-timestamp']) {
+        return res.status(403).json({ error: true, message: "Invalid Timestamp" })
     }
 
     const ts = req.headers['x-timestamp']
@@ -87,19 +79,19 @@ router.post('/auth/token', async(req, res) => {
     if (verifySignature(signature, data)) {
         const exp = 900
         res.status(200).json({ error: false, accessToken: generateAccessToken(clientId, exp.toString() + 's'), tokenType: "Bearer", expiresIn: exp })
-    } else  {
+    } else {
         res.status(403).json({ error: true, message: "Invalid Signature" })
     }
-    
+
 })
 
 router.post('/customers/v1.0/ematerai/update', authenticate, async (req, res) => {
-    if ( !req.headers['x-signature']) {
-        return res.status(403).json({ error: true, message: "Invalid Signature"})
+    if (!req.headers['x-signature']) {
+        return res.status(403).json({ error: true, message: "Invalid Signature" })
     }
 
-    if ( !req.headers['x-timestamp']) {
-        return res.status(403).json({ error: true, message: "Invalid Timestamp"})
+    if (!req.headers['x-timestamp']) {
+        return res.status(403).json({ error: true, message: "Invalid Timestamp" })
     }
 
     const signature = req.headers['x-signature']
@@ -113,7 +105,6 @@ router.post('/customers/v1.0/ematerai/update', authenticate, async (req, res) =>
 
     if (req.clientId == clientId) {
         if (verifyHMAC(signature, message)) {
-            //console.log(req.body)
             if (req.body[0].errCode == '00') {
                 const data = new Data({
                     batchId: req.body[0].result.batchId,
@@ -121,24 +112,21 @@ router.post('/customers/v1.0/ematerai/update', authenticate, async (req, res) =>
                     serialNumber: req.body[0].result.serialNumber,
                     qrImage: req.body[0].result.qrImage,
                 })
-            
-                try{
+
+                try {
                     const dataToSave = await data.save();
-                    res.status(200).json({error: false, message: "OK", result: dataToSave})
+                    res.status(200).json({ error: false, message: "OK", result: dataToSave })
                 }
-                catch(error){
-                    res.status(400).json({error: true, message: error.message})
+                catch (error) {
+                    res.status(400).json({ error: true, message: error.message })
                 }
             }
         } else {
-            //console.log(req.body)
-            //console.log(message)
-            //console.log("invalid signature")
-            res.status(403).json({ error: true, message: "Invalid Signature"})
+            res.status(403).json({ error: true, message: "Invalid Signature" })
         }
     }
     else
-        res.status(403).json({ error: true, message: "Not Authorized"})
+        res.status(403).json({ error: true, message: "Not Authorized" })
 })
 
 router.post('/callback', async (req, res) => {
@@ -149,17 +137,16 @@ router.post('/callback', async (req, res) => {
             serialNumber: req.body.result.serialNumber,
             qrImage: req.body.result.qrImage,
         })
-    
-        try{
+
+        try {
             const dataToSave = await data.save();
-            res.status(200).json({error: false, result: dataToSave})
+            res.status(200).json({ error: false, result: dataToSave })
         }
-        catch(error){
-            res.status(400).json({error: true, message: error.message})
+        catch (error) {
+            res.status(400).json({ error: true, message: error.message })
         }
     }
-    else
-    {
+    else {
         res.status(400).json({
             errCode: req.body.errCode,
             message: req.body.message,
@@ -170,60 +157,60 @@ router.post('/callback', async (req, res) => {
 })
 
 router.get('/callback/batch', async (req, res) => {
-    try{
+    try {
         let f = 'batchId procId serialNumber qrImage createdAt';
-        if(req.query.withQr=='false') {
+        if (req.query.withQr == 'false') {
             f = 'batchId procId serialNumber createdAt';
         }
         const data = await Data.find().select(f);
-        res.json({error: false, result: data})
+        res.json({ error: false, result: data })
     }
-    catch(error){
-        res.status(500).json({error: true, message: error.message})
+    catch (error) {
+        res.status(500).json({ error: true, message: error.message })
     }
 })
 
 router.get('/callback/batch/:batch', async (req, res) => {
-    try{
+    try {
         let f = 'batchId procId serialNumber qrImage createdAt';
-        if(req.query.withQr=='false') {
+        if (req.query.withQr == 'false') {
             f = 'batchId procId serialNumber createdAt';
         }
-        const data = await Data.find({batchId: req.params.batch}).select(f);
-        res.json({error: false, result: data})
+        const data = await Data.find({ batchId: req.params.batch }).select(f);
+        res.json({ error: false, result: data })
     }
-    catch(error){
-        res.status(500).json({error:  true, message: error.message})
+    catch (error) {
+        res.status(500).json({ error: true, message: error.message })
     }
 })
 
 router.get('/callback/count', (req, res) => {
-    try{
+    try {
         var b;
-        Data.find({}).distinct("batchId", function(error, ids) {
+        Data.find({}).distinct("batchId", function (error, ids) {
             b = ids
         });
         var data = Data.find();
         data.count(function (err, count) {
-            if (err) res.status(500).json({error: true, message: err.message})
-            else res.json({error: false, "total": count, "batchIdList": b})
+            if (err) res.status(500).json({ error: true, message: err.message })
+            else res.json({ error: false, "total": count, "batchIdList": b })
         });
     }
-    catch(error){
-        res.status(500).json({error: true, message: error.message})
+    catch (error) {
+        res.status(500).json({ error: true, message: error.message })
     }
 })
 
 router.get('/callback/count/:batch', (req, res) => {
-    try{
-        var query = Data.find({batchId: req.params.batch});
+    try {
+        var query = Data.find({ batchId: req.params.batch });
         query.count(function (err, count) {
-            if (err) res.status(500).json({error: true, message: err.message})
-            else res.json({error: false, "batchId": req.params.batch, "count": count})
+            if (err) res.status(500).json({ error: true, message: err.message })
+            else res.json({ error: false, "batchId": req.params.batch, "count": count })
         });
     }
-    catch(error){
-        res.status(500).json({error: true, message: error.message})
+    catch (error) {
+        res.status(500).json({ error: true, message: error.message })
     }
 })
 
