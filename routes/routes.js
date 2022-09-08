@@ -23,12 +23,12 @@ function verifySignature(sign, data) {
     const verify = crypto.createVerify(ALGORITHM);
     const signature = sign;
 
-    console.log('\n>>> Signature:\n\n' + signature);
+    //console.log('\n>>> Signature:\n\n' + signature);
 
     verify.update(data);
     const verification = verify.verify(publicKey, signature, SIGNATURE_FORMAT);
 
-    console.log('\n>>> Verification result: ' + verification.toString().toUpperCase());
+    console.log('\n>>> Signature Verification result: ' + verification.toString().toUpperCase());
 
     return verification;
 }
@@ -37,13 +37,14 @@ function verifyHMAC(signature, data) {
     const hmac = crypto.createHmac('sha512', clientSecret);
     const validate = hmac.update(data).digest('hex');
     
-    console.log(">> from header:", signature)
-    console.log(">> from verify:", validate)
+    //console.log(">> from header:", signature)
+    //console.log(">> from verify:", validate)
     
     if (signature == validate){
+        console.log('\n>>> HMAC Verification result: TRUE');
         return true
     }
-
+    console.log('\n>>> HMAC Verification result: FALSE');
     return false
 }
 
@@ -69,15 +70,15 @@ function authenticate(req, res, next) {
 
 router.post('/auth/token', async(req, res) => {
     if ( clientId !== req.headers['x-mandiri-key']) {
-        return res.status(403).json({ message: "Invalid Client ID"})
+        return res.status(403).json({ error: true, message: "Invalid Client ID"})
     } 
 
     if ( !req.headers['x-signature']) {
-        return res.status(403).json({ message: "Invalid Signature"})
+        return res.status(403).json({ error: true, message: "Invalid Signature"})
     }
 
     if ( !req.headers['x-timestamp']) {
-        return res.status(403).json({ message: "Invalid Timestamp"})
+        return res.status(403).json({ error: true, message: "Invalid Timestamp"})
     }
 
     const ts = req.headers['x-timestamp']
@@ -85,14 +86,22 @@ router.post('/auth/token', async(req, res) => {
     const signature = req.headers['x-signature']
     if (verifySignature(signature, data)) {
         const exp = 900
-        res.status(200).json({ accessToken: generateAccessToken(clientId, exp.toString() + 's'), tokenType: "Bearer", expiresIn: exp })
+        res.status(200).json({ error: false, accessToken: generateAccessToken(clientId, exp.toString() + 's'), tokenType: "Bearer", expiresIn: exp })
     } else  {
-        res.status(403).json({ message: "Invalid Signature"})
+        res.status(403).json({ error: true, message: "Invalid Signature" })
     }
     
 })
 
-router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
+router.post('/customers/v1.0/ematerai/update', authenticate, async (req, res) => {
+    if ( !req.headers['x-signature']) {
+        return res.status(403).json({ error: true, message: "Invalid Signature"})
+    }
+
+    if ( !req.headers['x-timestamp']) {
+        return res.status(403).json({ error: true, message: "Invalid Timestamp"})
+    }
+
     const signature = req.headers['x-signature']
     const meth = req.method
     const url = req.url
@@ -103,19 +112,33 @@ router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
     const message = `${meth}:/api${url}:${token}:${body}:${ts}`;
 
     if (req.clientId == clientId) {
-        console.log(req.clientId)
         if (verifyHMAC(signature, message)) {
-            console.log(req.body)
-            res.status(200).json({clientId: req.clientId, message: "OK"})
+            //console.log(req.body)
+            if (req.body[0].errCode == '00') {
+                const data = new Data({
+                    batchId: req.body[0].result.batchId,
+                    procId: req.body[0].result.procId,
+                    serialNumber: req.body[0].result.serialNumber,
+                    qrImage: req.body[0].result.qrImage,
+                })
+            
+                try{
+                    const dataToSave = await data.save();
+                    res.status(200).json({error: false, message: "OK", result: dataToSave})
+                }
+                catch(error){
+                    res.status(400).json({error: true, message: error.message})
+                }
+            }
         } else {
-            console.log(req.body)
-            console.log(message)
-            console.log("invalid signature")
-            res.status(403).json({ message: "Invalid Signature"})
+            //console.log(req.body)
+            //console.log(message)
+            //console.log("invalid signature")
+            res.status(403).json({ error: true, message: "Invalid Signature"})
         }
     }
     else
-        res.status(403).json({message: "Not Authorized"})
+        res.status(403).json({ error: true, message: "Not Authorized"})
 })
 
 router.post('/callback', async (req, res) => {
@@ -129,10 +152,10 @@ router.post('/callback', async (req, res) => {
     
         try{
             const dataToSave = await data.save();
-            res.status(200).json(dataToSave)
+            res.status(200).json({error: false, result: dataToSave})
         }
         catch(error){
-            res.status(400).json({message: error.message})
+            res.status(400).json({error: true, message: error.message})
         }
     }
     else
@@ -153,10 +176,10 @@ router.get('/callback/batch', async (req, res) => {
             f = 'batchId procId serialNumber createdAt';
         }
         const data = await Data.find().select(f);
-        res.json(data)
+        res.json({error: false, result: data})
     }
     catch(error){
-        res.status(500).json({message: error.message})
+        res.status(500).json({error: true, message: error.message})
     }
 })
 
@@ -167,10 +190,10 @@ router.get('/callback/batch/:batch', async (req, res) => {
             f = 'batchId procId serialNumber createdAt';
         }
         const data = await Data.find({batchId: req.params.batch}).select(f);
-        res.json(data)
+        res.json({error: false, result: data})
     }
     catch(error){
-        res.status(500).json({message: error.message})
+        res.status(500).json({error:  true, message: error.message})
     }
 })
 
@@ -182,26 +205,25 @@ router.get('/callback/count', (req, res) => {
         });
         var data = Data.find();
         data.count(function (err, count) {
-            if (err) res.status(500).json({message: err.message})
-            else res.json({"total": count, "batchIdList": b})
+            if (err) res.status(500).json({error: true, message: err.message})
+            else res.json({error: false, "total": count, "batchIdList": b})
         });
     }
     catch(error){
-        res.status(500).json({message: error.message})
+        res.status(500).json({error: true, message: error.message})
     }
 })
-
 
 router.get('/callback/count/:batch', (req, res) => {
     try{
         var query = Data.find({batchId: req.params.batch});
         query.count(function (err, count) {
-            if (err) res.status(500).json({message: err.message})
-            else res.json({"batchId": req.params.batch, "count": count})
+            if (err) res.status(500).json({error: true, message: err.message})
+            else res.json({error: false, "batchId": req.params.batch, "count": count})
         });
     }
     catch(error){
-        res.status(500).json({message: error.message})
+        res.status(500).json({error: true, message: error.message})
     }
 })
 
