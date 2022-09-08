@@ -105,7 +105,7 @@ router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
     const token = authHeader && authHeader.split(' ')[1]
     const body = JSON.stringify(req.body)
     const ts = req.headers['x-timestamp']
-    const message = `${meth}:/openapi${url}:${token}:[${JSON.stringify(body)}]:${ts}`;
+    const message = `${meth}:/openapi${url}:${token}:${JSON.stringify(body)}:${ts}`;
 
     if (req.clientId == clientId) {
         console.log(req.clientId)
