@@ -91,7 +91,7 @@ router.post('/auth/token', async(req, res) => {
     const signature = req.headers['x-signature']
     if (verifySignature(signature, data)) {
         const exp = 900
-        res.status(200).json({ token: generateAccessToken(clientId, exp.toString() + 's'), expiresIn: exp })
+        res.status(200).json({ accessToken: generateAccessToken(clientId, exp.toString() + 's'), tokenType: "Bearer", expiresIn: exp })
     } else  {
         res.status(403).json({ message: "Invalid Signature"})
     }
