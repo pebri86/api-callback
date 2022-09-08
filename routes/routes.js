@@ -73,7 +73,7 @@ function authenticate(req, res, next) {
     })
 }
 
-router.post('/auth/getToken', async(req, res) => {
+router.post('/auth/token', async(req, res) => {
     if ( clientId !== req.headers['x-mandiri-key']) {
         return res.status(403).json({ message: "Invalid Client ID"})
     } 
@@ -98,7 +98,7 @@ router.post('/auth/getToken', async(req, res) => {
     
 })
 
-router.post('/callback/secure/update', authenticate, (req, res) => {
+router.post('/customers/v1.0/ematerai/update', authenticate, (req, res) => {
     const signature = req.headers['x-signature']
     const meth = req.method
     const url = req.url
@@ -107,7 +107,7 @@ router.post('/callback/secure/update', authenticate, (req, res) => {
     const body = JSON.stringify(req.body)
     const ts = req.headers['x-timestamp']
     const message = meth + ":/api" + url + ":" + token + ":" + body + ":" + ts
-    
+
     if (req.clientId == clientId) {
         console.log(req.clientId)
         if (verifyHMAC(signature, message)) {
