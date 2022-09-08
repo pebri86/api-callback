@@ -1,7 +1,124 @@
 const express = require('express');
+const crypto = require('crypto');
+const fs = require('fs');
 const Data = require('../models/serial');
+const jwt = require('jsonwebtoken');
+const { isRegExp } = require('util');
 
 const router = express.Router()
+const clientId = 'ea09066c-3631-4fff-99c6-28c8f0d88607'
+const clientSecret = '983fb95b-332a-46a1-b14f-fdeca9a713d2'
+const ALGORITHM = "sha256"; // Accepted: any result of crypto.getHashes(), check doc dor other options
+const SIGNATURE_FORMAT = "base64"; // Accepted: hex, latin1, base64
+
+function getPublicKey() {
+    const path = require("path");
+    var pubKey = fs.readFileSync(path.resolve(__dirname, "certificate_publickey.pem"), 'utf-8');
+    console.log("\n>>> Public key: \n\n" + pubKey);
+    
+    return pubKey;
+}
+
+function verifySignature(signature, data) {
+    var publicKey = getPublicKey();
+    var verify = crypto.createVerify(ALGORITHM);
+    var signature = signature;
+
+    console.log('\n>>> Signature:\n\n' + signature);
+
+    verify.update(data);
+
+    var verification = verify.verify(publicKey, signature, SIGNATURE_FORMAT);
+
+    console.log('\n>>> Verification result: ' + verification.toString().toUpperCase());
+
+    return verification;
+}
+
+function verifyHMAC(signature, data) {
+    var hmac = crypto.createHmac('sha512', clientSecret);
+    //passing the data to be hashed
+    const vdata = hmac.update(data);
+    //Creating the hmac in the required format
+    gen_hmac= vdata.digest('hex');
+    
+    console.log(signature)
+    console.log(gen_hmac)
+    
+    if (signature == gen_hmac){
+        return true
+    }
+
+    return false
+}
+
+function generateAccessToken(clientId, expire) {
+    return jwt.sign({ clientId: clientId }, process.env.TOKEN_SECRET, { expiresIn: expire});
+}
+
+function authenticate(req, res, next) {
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+
+    if (token == null) return res.sendStatus(401)
+
+    jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+        console.log(err)
+
+        if (err) return res.status(403).json({message: "Not Authorized"})
+
+        req.clientId = decoded.clientId
+
+        next()
+    })
+}
+
+router.post('/auth/getToken', async(req, res) => {
+    if ( clientId !== req.headers['x-mandiri-key']) {
+        return res.status(403).json({ message: "Invalid Client ID"})
+    } 
+
+    if ( !req.headers['x-signature']) {
+        return res.status(403).json({ message: "Invalid Signature"})
+    }
+
+    if ( !req.headers['x-timestamp']) {
+        return res.status(403).json({ message: "Invalid Timestamp"})
+    }
+
+    const ts = req.headers['x-timestamp']
+    const data = clientId + "|" + ts
+    const signature = req.headers['x-signature']
+    if (verifySignature(signature, data)) {
+        const exp = 900
+        res.status(200).json({ token: generateAccessToken(clientId, exp.toString() + 's'), expiresIn: exp })
+    } else  {
+        res.status(403).json({ message: "Invalid Signature"})
+    }
+    
+})
+
+router.post('/callback/secure/update', authenticate, (req, res) => {
+    const signature = req.headers['x-signature']
+    const meth = req.method
+    const url = req.url
+    const authHeader = req.headers['authorization']
+    const token = authHeader && authHeader.split(' ')[1]
+    const body = JSON.stringify(req.body)
+    const ts = req.headers['x-timestamp']
+    const message = meth + ":/api" + url + ":" + token + ":" + body + ":" + ts
+    
+    if (req.clientId == clientId) {
+        console.log(req.clientId)
+        if (verifyHMAC(signature, message)) {
+            console.log(req.body)
+            res.status(200).json({clientId: req.clientId, message: "OK"})
+        } else
+            res.status(403).json({ message: "Invalid Signature"})
+    }
+    else
+        res.status(403).json({message: "Not Authorized"})
+})
 
 router.post('/callback', async (req, res) => {
     if (req.body.errCode == '00') {
