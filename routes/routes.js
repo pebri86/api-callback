@@ -18,10 +18,10 @@ function getPublicKey() {
     return pubKey;
 }
 
-function verifySignature(signature, data) {
+function verifySignature(sign, data) {
     const publicKey = getPublicKey();
     const verify = crypto.createVerify(ALGORITHM);
-    const signature = signature;
+    const signature = sign;
 
     console.log('\n>>> Signature:\n\n' + signature);
 
