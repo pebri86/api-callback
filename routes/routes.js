@@ -53,7 +53,10 @@ function authenticate(req, res, next) {
     if (token == null) return res.sendStatus(401)
 
     jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
-        if (err) return res.status(403).json({ message: "Not Authorized" })
+        if (err) {
+            console.log("middleware: JWToken not found or invalid");
+            return res.status(403).json({ error: true, message: "Token Invalid or Not Authorized" })
+        }
         req.clientId = decoded.clientId
 
         next()
