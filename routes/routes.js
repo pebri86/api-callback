@@ -25,7 +25,7 @@ function verifySignature(sign, data) {
     verify.update(data);
     const verification = verify.verify(publicKey, signature, SIGNATURE_FORMAT);
 
-    //console.log('\n>>> Signature Verification result: ' + verification.toString().toUpperCase());
+    console.log('\n>>> Signature Verification result: ' + verification.toString().toUpperCase());
 
     return verification;
 }
@@ -35,10 +35,10 @@ function verifyHMAC(signature, data) {
     const validate = hmac.update(data).digest('hex');
 
     if (signature == validate) {
-        //console.log('\n>>> HMAC Verification result: TRUE');
+        console.log('\n>>> HMAC Verification result: TRUE');
         return true
     }
-    //console.log('\n>>> HMAC Verification result: FALSE');
+    console.log('\n>>> HMAC Verification result: FALSE');
     return false
 }
 
@@ -90,10 +90,12 @@ router.post('/auth/token', async (req, res) => {
 
 router.post('/customers/v1.0/ematerai/update', authenticate, async (req, res) => {
     if (!req.headers['x-signature']) {
+        console.log("Signature not found")
         return res.status(403).json({ error: true, message: "Invalid Signature" })
     }
 
     if (!req.headers['x-timestamp']) {
+        console.log("Timestamp not found")
         return res.status(403).json({ error: true, message: "Invalid Timestamp" })
     }
 
@@ -125,11 +127,14 @@ router.post('/customers/v1.0/ematerai/update', authenticate, async (req, res) =>
                 }
             }
         } else {
+            console.log("Invalid signature")
             res.status(403).json({ error: true, message: "Invalid Signature" })
         }
     }
-    else
+    else {
+        console.log("Invalid clientId")
         res.status(403).json({ error: true, message: "Not Authorized" })
+    }
 })
 
 router.post('/callback', async (req, res) => {
