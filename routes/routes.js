@@ -156,6 +156,16 @@ router.post('/callback', async (req, res) => {
     }
 })
 
+router.get('/callback/list', async (req, res) => {
+    try {
+        const data = await Data.distinct("batchId");
+        res.json({ error: false, total: data.length, result: data })
+    }
+    catch (error) {
+        res.status(500).json({ error: true, message: error.message })
+    }
+})
+
 router.get('/callback/batch', async (req, res) => {
     try {
         let f = 'batchId procId serialNumber qrImage createdAt';
@@ -163,7 +173,7 @@ router.get('/callback/batch', async (req, res) => {
             f = 'batchId procId serialNumber createdAt';
         }
         const data = await Data.find().select(f);
-        res.json({ error: false, result: data })
+        res.json({ error: false, total: data.length, result: data })
     }
     catch (error) {
         res.status(500).json({ error: true, message: error.message })
@@ -177,14 +187,14 @@ router.get('/callback/batch/:batch', async (req, res) => {
             f = 'batchId procId serialNumber createdAt';
         }
         const data = await Data.find({ batchId: req.params.batch }).select(f);
-        res.json({ error: false, result: data })
+        res.json({ error: false, total: data.length, result: data })
     }
     catch (error) {
         res.status(500).json({ error: true, message: error.message })
     }
 })
 
-router.get('/callback/count', (req, res) => {
+router.get('/callback/count', async (req, res) => {
     try {
         var b;
         Data.find({}).distinct("batchId", function (error, ids) {
