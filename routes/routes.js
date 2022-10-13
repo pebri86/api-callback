@@ -86,7 +86,7 @@ router.post('/v1/forwarder', async (req, res) => {
     const body = req.body
 
     // create signature for token
-    const timestamp = moment().format("YYYY-MM-DDTHH:mm:ss.SSSTZZ"); //new Date().toISOString()
+    const timestamp = moment().utcOffset('+0700').format("YYYY-MM-DDTHH:mm:ss.SSSTZZ"); //new Date().toISOString()
     const msg = `${clientId}|${timestamp}`
     console.log(msg)
     const sign = createSignature(msg)
