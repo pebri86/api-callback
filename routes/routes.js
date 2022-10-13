@@ -3,6 +3,9 @@ const crypto = require('crypto');
 const fs = require('fs');
 const Data = require('../models/serial');
 const jwt = require('jsonwebtoken');
+const https = require('https');
+const fetch = require('node-fetch');
+const moment = require('moment');
 
 const router = express.Router()
 const clientId = 'ea09066c-3631-4fff-99c6-28c8f0d88607'
@@ -15,6 +18,22 @@ function getPublicKey() {
     const pubKey = fs.readFileSync(path.resolve(__dirname, "certificate_publickey.pem"), 'utf-8');
 
     return pubKey;
+}
+
+function getPrivateKey() {
+    const path = require("path");
+    const prKey = fs.readFileSync(path.resolve(__dirname, "perurikey.pem"), 'utf-8');
+
+    return prKey;
+}
+
+function createSignature(data) {
+    const prKey = getPrivateKey();
+    var signer = crypto.createSign('sha256');
+    signer.update(data);
+    var sign = signer.sign(prKey, 'base64');
+
+    return sign
 }
 
 function verifySignature(sign, data) {
@@ -62,6 +81,58 @@ function authenticate(req, res, next) {
         next()
     })
 }
+
+router.post('/v1/forwarder', async (req, res) => {
+    const body = req.body
+
+    // create signature for token
+    const timestamp = moment().format("YYYY-MM-DDTHH:mm:ss.SSSTZZ"); //new Date().toISOString()
+    const msg = `${clientId}|${timestamp}`
+    console.log(msg)
+    const sign = createSignature(msg)
+    console.log(sign)
+    const httpsAgent = new https.Agent({
+        rejectUnauthorized: false,
+      });
+    let resp = await fetch('https://202.22.31.8/openapi/auth/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Mandiri-Key': clientId,
+            'X-SIGNATURE': sign,
+            'X-TIMESTAMP': timestamp,
+        },
+        body: JSON.stringify({
+            grant_type:"client_credentials"
+        }),
+        agent: httpsAgent
+    })
+
+    const tokenObj = await resp.json()
+    const token = tokenObj.accessToken
+    console.log(token)
+
+    const data = `POST:/openapi/customers/v1.0/ematerai/update:${token}:${JSON.stringify(body)}:${timestamp}`
+    const hmac = crypto.createHmac('sha512', clientSecret);
+    const signature = hmac.update(data).digest('hex');
+
+    let resp2 = await fetch('https://202.22.31.8/openapi/customers/v1.0/ematerai/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-SIGNATURE': signature,
+            'X-TIMESTAMP': timestamp,
+            'Authorization': `bearer ${token}`
+        },
+        body: JSON.stringify(body),
+        agent: httpsAgent
+    })
+
+    const ret = await resp2.json()
+    console.log("transaction", ret)
+
+    return res.status(200).json({data: ret})
+})
 
 router.post('/auth/token', async (req, res) => {
     if (clientId !== req.headers['x-mandiri-key']) {
